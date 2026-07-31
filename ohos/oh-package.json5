@@ -1,0 +1,9 @@
+{
+  "name": "huawei_kit",
+  "version": "1.0.0",
+  "description": "Huawei Account Kit authentication plugin for Flutter on HarmonyOS",
+  "main": "index.ets",
+  "author": "Wgga",
+  "license": "MIT",
+  "dependencies": {}
+}

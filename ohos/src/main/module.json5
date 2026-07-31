@@ -1,0 +1,11 @@
+{
+  "module": {
+    "name": "huawei_kit",
+    "type": "har",
+    "deviceTypes": [
+      "default",
+      "tablet",
+      "2in1"
+    ]
+  }
+}
