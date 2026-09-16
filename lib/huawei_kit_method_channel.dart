@@ -12,76 +12,70 @@ class MethodChannelHuaweiKit extends HuaweiKitPlatform {
     'wgga.github.io/huawei_kit',
   );
 
+  /// Account Kit 对 `state`/`nonce` 的字符集与长度限制。
+  static final RegExp _stateOrNoncePattern = RegExp(r'^[0-9a-zA-Z:/.\-_]{1,255}$');
+
   @override
-  Future<HuaweiAuthResult> authorize({
-    List<String> scopes = const <String>['openid', 'profile'],
-    bool forceAuthorization = true,
+  Future<HuaweiAuthResult> auth({
+    bool forceLogin = true,
     String? state,
     String? nonce,
     HuaweiIdTokenSignAlgorithm idTokenSignAlgorithm =
         HuaweiIdTokenSignAlgorithm.ps256,
-  }) async {
-    if (scopes.isEmpty || scopes.any((String scope) => scope.trim().isEmpty)) {
-      throw ArgumentError.value(
-        scopes,
-        'scopes',
-        'must contain at least one non-empty scope',
-      );
-    }
+  }) {
+    _validateStateOrNonce('state', state);
+    _validateStateOrNonce('nonce', nonce);
 
-    return _invokeAuthorize(
-      method: 'authorize',
-      scopes: scopes,
-      forceAuthorization: forceAuthorization,
-      state: state,
-      nonce: nonce,
-      idTokenSignAlgorithm: idTokenSignAlgorithm,
+    return _invoke(
+      method: 'auth',
+      arguments: <String, Object?>{
+        'forceLogin': forceLogin,
+        if (state != null) 'state': state,
+        if (nonce != null) 'nonce': nonce,
+        'idTokenSignAlgorithm': idTokenSignAlgorithm.nativeValue,
+      },
     );
   }
 
   @override
-  Future<HuaweiAuthResult> auth({
-    List<String> scopes = const <String>['openid', 'profile'],
+  Future<HuaweiAuthResult> authorize({
+    List<String> scopes = const <String>['openid'],
+    List<String> permissions = const <String>['idtoken', 'serviceauthcode'],
     bool forceAuthorization = true,
     String? state,
     String? nonce,
     HuaweiIdTokenSignAlgorithm idTokenSignAlgorithm =
         HuaweiIdTokenSignAlgorithm.ps256,
   }) {
-    return _invokeAuthorize(
-      method: 'auth',
-      scopes: scopes,
-      forceAuthorization: forceAuthorization,
-      state: state,
-      nonce: nonce,
-      idTokenSignAlgorithm: idTokenSignAlgorithm,
+    if (scopes.isEmpty && permissions.isEmpty) {
+      throw ArgumentError(
+        'scopes and permissions must not both be empty',
+      );
+    }
+    _validateStringList('scopes', scopes);
+    _validateStringList('permissions', permissions);
+    _validateStateOrNonce('state', state);
+    _validateStateOrNonce('nonce', nonce);
+
+    return _invoke(
+      method: 'authorize',
+      arguments: <String, Object?>{
+        if (scopes.isNotEmpty) 'scopes': scopes,
+        if (permissions.isNotEmpty) 'permissions': permissions,
+        'forceAuthorization': forceAuthorization,
+        if (state != null) 'state': state,
+        if (nonce != null) 'nonce': nonce,
+        'idTokenSignAlgorithm': idTokenSignAlgorithm.nativeValue,
+      },
     );
   }
 
-  Future<HuaweiAuthResult> _invokeAuthorize({
+  Future<HuaweiAuthResult> _invoke({
     required String method,
-    required List<String> scopes,
-    required bool forceAuthorization,
-    required String? state,
-    required String? nonce,
-    required HuaweiIdTokenSignAlgorithm idTokenSignAlgorithm,
+    required Map<String, Object?> arguments,
   }) async {
-    if (scopes.isEmpty || scopes.any((String scope) => scope.trim().isEmpty)) {
-      throw ArgumentError.value(
-        scopes,
-        'scopes',
-        'must contain at least one non-empty scope',
-      );
-    }
-
     final Map<Object?, Object?>? response = await methodChannel
-        .invokeMethod<Map<Object?, Object?>>(method, <String, Object?>{
-          'scopes': scopes,
-          'forceAuthorization': forceAuthorization,
-          if (state != null) 'state': state,
-          if (nonce != null) 'nonce': nonce,
-          'idTokenSignAlgorithm': idTokenSignAlgorithm.nativeValue,
-        });
+        .invokeMethod<Map<Object?, Object?>>(method, arguments);
     if (response == null) {
       throw PlatformException(
         code: 'empty_response',
@@ -89,5 +83,28 @@ class MethodChannelHuaweiKit extends HuaweiKitPlatform {
       );
     }
     return HuaweiAuthResult.fromMap(response);
+  }
+
+  void _validateStringList(String name, List<String> values) {
+    if (values.any((String value) => value.trim().isEmpty)) {
+      throw ArgumentError.value(
+        values,
+        name,
+        'must not contain empty entries',
+      );
+    }
+  }
+
+  void _validateStateOrNonce(String name, String? value) {
+    if (value == null) {
+      return;
+    }
+    if (!_stateOrNoncePattern.hasMatch(value)) {
+      throw ArgumentError.value(
+        value,
+        name,
+        r'must match ^[0-9a-zA-Z:/.\-_]{1,255}$',
+      );
+    }
   }
 }

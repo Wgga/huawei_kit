@@ -28,25 +28,30 @@ class AuthorizationPage extends StatefulWidget {
 
 class _AuthorizationPageState extends State<AuthorizationPage> {
   String _status = 'Not authorized';
-  bool _authorizing = false;
+  String? _busyAction;
 
-  Future<void> _authorize() async {
+  Future<void> _run(
+    String action,
+    Future<HuaweiAuthResult> Function() request,
+  ) async {
     setState(() {
-      _authorizing = true;
-      _status = 'Authorizing...';
+      _busyAction = action;
+      _status = '$action...';
     });
 
     try {
-      final HuaweiAuthResult auth = await HuaweiKit.instance.authorize();
+      final HuaweiAuthResult auth = await request();
       if (!mounted) {
         return;
       }
       setState(() {
         _status = <String>[
+          '[$action]',
           'authorizationCode: ${auth.authorizationCode == null ? 'missing' : 'received'}',
           'idToken: ${auth.idToken == null ? 'missing' : 'received'}',
           'openID: ${auth.openID ?? 'missing'}',
           'unionID: ${auth.unionID ?? 'missing'}',
+          'state: ${auth.state ?? 'missing'}',
         ].join('\n');
       });
     } on PlatformException catch (error) {
@@ -54,17 +59,20 @@ class _AuthorizationPageState extends State<AuthorizationPage> {
         return;
       }
       setState(() {
-        _status = 'Error ${error.code}: ${error.message ?? 'Unknown error'}';
+        _status =
+            '[$action] Error ${error.code}: ${error.message ?? 'Unknown error'}';
       });
     } finally {
       if (mounted) {
-        setState(() => _authorizing = false);
+        setState(() => _busyAction = null);
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final bool busy = _busyAction != null;
+
     return Scaffold(
       appBar: AppBar(title: const Text('Huawei Account Kit')),
       body: Center(
@@ -76,13 +84,26 @@ class _AuthorizationPageState extends State<AuthorizationPage> {
               SelectableText(_status, textAlign: TextAlign.center),
               const SizedBox(height: 24),
               FilledButton.icon(
-                onPressed: _authorizing ? null : _authorize,
-                icon: _authorizing
+                onPressed: busy
+                    ? null
+                    : () => _run('Login', () => HuaweiKit.instance.auth()),
+                icon: busy
                     ? const SizedBox.square(
                         dimension: 18,
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(Icons.login),
+                label: const Text('Login'),
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                onPressed: busy
+                    ? null
+                    : () => _run(
+                          'Authorize',
+                          () => HuaweiKit.instance.authorize(),
+                        ),
+                icon: const Icon(Icons.verified_user),
                 label: const Text('Authorize'),
               ),
             ],

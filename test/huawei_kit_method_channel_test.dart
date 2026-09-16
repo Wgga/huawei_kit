@@ -21,6 +21,7 @@ void main() {
             'idToken': 'id-token',
             'openID': 'open-id',
             'unionID': 'union-id',
+            'state': 'generated-state',
           };
         });
     platform = MethodChannelHuaweiKit();
@@ -31,9 +32,42 @@ void main() {
         .setMockMethodCallHandler(_channel, null);
   });
 
-  test('authorize sends the documented arguments and decodes result', () async {
+  test('auth sends the documented login arguments and decodes result', () async {
+    final HuaweiAuthResult response = await platform.auth(
+      forceLogin: false,
+      state: 'state-1',
+      nonce: 'nonce-1',
+      idTokenSignAlgorithm: HuaweiIdTokenSignAlgorithm.rs256,
+    );
+
+    expect(calls.single.method, 'auth');
+    expect(calls.single.arguments, <String, Object?>{
+      'forceLogin': false,
+      'state': 'state-1',
+      'nonce': 'nonce-1',
+      'idTokenSignAlgorithm': 2,
+    });
+    expect(response.authorizationCode, 'authorization-code');
+    expect(response.idToken, 'id-token');
+    expect(response.openID, 'open-id');
+    expect(response.unionID, 'union-id');
+    expect(response.state, 'generated-state');
+  });
+
+  test('auth uses Account Kit login defaults', () async {
+    await platform.auth();
+
+    expect(calls.single.method, 'auth');
+    expect(calls.single.arguments, <String, Object?>{
+      'forceLogin': true,
+      'idTokenSignAlgorithm': 1,
+    });
+  });
+
+  test('authorize sends the documented authorization arguments', () async {
     final HuaweiAuthResult response = await platform.authorize(
       scopes: const <String>['openid'],
+      permissions: const <String>['idtoken'],
       forceAuthorization: false,
       state: 'state-1',
       nonce: 'nonce-1',
@@ -43,36 +77,55 @@ void main() {
     expect(calls.single.method, 'authorize');
     expect(calls.single.arguments, <String, Object?>{
       'scopes': <String>['openid'],
+      'permissions': <String>['idtoken'],
       'forceAuthorization': false,
       'state': 'state-1',
       'nonce': 'nonce-1',
       'idTokenSignAlgorithm': 2,
     });
-    expect(response.authorizationCode, 'authorization-code');
-    expect(response.idToken, 'id-token');
     expect(response.openID, 'open-id');
-    expect(response.unionID, 'union-id');
+    expect(response.state, 'generated-state');
   });
 
-  test('authorize uses Account Kit defaults', () async {
+  test('authorize uses Account Kit authorization defaults', () async {
     await platform.authorize();
 
+    expect(calls.single.method, 'authorize');
     expect(calls.single.arguments, <String, Object?>{
-      'scopes': <String>['openid', 'profile'],
+      'scopes': <String>['openid'],
+      'permissions': <String>['idtoken', 'serviceauthcode'],
       'forceAuthorization': true,
       'idTokenSignAlgorithm': 1,
     });
   });
 
-  test('auth is a compatible alias for the native auth method', () async {
-    await platform.auth(scopes: const <String>['openid']);
+  test('authorize omits an empty scope list when permissions are present', () async {
+    await platform.authorize(
+      scopes: const <String>[],
+      permissions: const <String>['serviceauthcode'],
+    );
 
-    expect(calls.single.method, 'auth');
+    expect(calls.single.arguments, <String, Object?>{
+      'permissions': <String>['serviceauthcode'],
+      'forceAuthorization': true,
+      'idTokenSignAlgorithm': 1,
+    });
   });
 
-  test('authorize rejects an empty scope list before native call', () async {
-    await expectLater(
-      platform.authorize(scopes: const <String>[]),
+  test('authorize rejects empty scopes and permissions before native call', () {
+    expect(
+      () => platform.authorize(
+        scopes: const <String>[],
+        permissions: const <String>[],
+      ),
+      throwsArgumentError,
+    );
+    expect(calls, isEmpty);
+  });
+
+  test('auth rejects a malformed state before native call', () {
+    expect(
+      () => platform.auth(state: 'invalid state'),
       throwsArgumentError,
     );
     expect(calls, isEmpty);

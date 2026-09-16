@@ -1,6 +1,6 @@
 name: huawei_kit
 description: Huawei Account Kit authentication for Flutter on HarmonyOS.
-version: 1.0.0
+version: 1.0.1
 homepage: https://github.com/Wgga/huawei_kit
 repository: https://github.com/Wgga/huawei_kit.git
 issue_tracker: https://github.com/Wgga/huawei_kit/issues

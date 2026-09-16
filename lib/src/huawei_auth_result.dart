@@ -22,6 +22,7 @@ final class HuaweiAuthResult {
     this.idToken,
     this.openID,
     this.unionID,
+    this.state,
   });
 
   /// 从 MethodChannel 返回值创建授权结果。
@@ -31,6 +32,7 @@ final class HuaweiAuthResult {
       idToken: map['idToken'] as String?,
       openID: map['openID'] as String?,
       unionID: map['unionID'] as String?,
+      state: map['state'] as String?,
     );
   }
 
@@ -46,12 +48,18 @@ final class HuaweiAuthResult {
   /// 同一开发者账号下多个应用共享的用户唯一标识。
   final String? unionID;
 
+  /// 本次请求使用的 `state`。
+  ///
+  /// 调用方未指定时由原生生成，可交给服务端做防重放校验。
+  final String? state;
+
   /// 转换为 Map。
   Map<String, String?> toMap() => <String, String?>{
     'authorizationCode': authorizationCode,
     'idToken': idToken,
     'openID': openID,
     'unionID': unionID,
+    'state': state,
   };
 
   @override
@@ -59,6 +67,6 @@ final class HuaweiAuthResult {
     return 'HuaweiAuthResult('
         'authorizationCode: ${authorizationCode == null ? null : '***'}, '
         'idToken: ${idToken == null ? null : '***'}, '
-        'openID: $openID, unionID: $unionID)';
+        'openID: $openID, unionID: $unionID, state: $state)';
   }
 }
